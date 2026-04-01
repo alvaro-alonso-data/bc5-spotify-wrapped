@@ -1,9 +1,9 @@
 # ============================================================
 # CABECERA
 # ============================================================
-# Alumno: Nombre Apellido
-# URL Streamlit Cloud: https://...streamlit.app
-# URL GitHub: https://github.com/...
+# Alumno: Álvaro Alonso
+# URL Streamlit Cloud: https://alvaro-alonso-bc5.streamlit.app
+# URL GitHub: https://github.com/alvaro-alonso-data/bc5-spotify-wrapped
 
 # ============================================================
 # IMPORTS
@@ -344,29 +344,42 @@ if prompt := st.chat_input("Ej: ¿Cuál es mi artista más escuchado?"):
 # REFLEXIÓN TÉCNICA (máximo 30 líneas)
 # ============================================================
 #
-# Responde a estas tres preguntas con tus palabras. Sé concreto
-# y haz referencia a tu solución, no a generalidades.
-# No superes las 30 líneas en total entre las tres respuestas.
-#
 # 1. ARQUITECTURA TEXT-TO-CODE
-#    ¿Cómo funciona la arquitectura de tu aplicación? ¿Qué recibe
-#    el LLM? ¿Qué devuelve? ¿Dónde se ejecuta el código generado?
-#    ¿Por qué el LLM no recibe los datos directamente?
 #
-#    [Tu respuesta aquí]
+#    La app no le manda los datos al LLM, le manda solo la estructura.
+#    El LLM sabe que existe una columna "artista" o "hora", pero nunca
+#    ve los nombres reales ni las filas. Con esa información genera
+#    código Python, y es la app la que lo ejecuta localmente con exec()
+#    sobre el DataFrame real. El resultado es una figura de Plotly que
+#    se renderiza en pantalla.
+#    Esto tiene dos ventajas claras: los datos del usuario no salen del
+#    servidor (privacidad), y no se malgastan tokens enviando 15.000
+#    filas en cada llamada (eficiencia).
 #
 #
 # 2. EL SYSTEM PROMPT COMO PIEZA CLAVE
-#    ¿Qué información le das al LLM y por qué? Pon un ejemplo
-#    concreto de una pregunta que funciona gracias a algo específico
-#    de tu prompt, y otro de una que falla o fallaría si quitases
-#    una instrucción.
 #
-#    [Tu respuesta aquí]
+#    El system prompt es el briefing que le doy al LLM antes de cada
+#    pregunta. Le explico qué columnas tiene el DataFrame, qué contiene
+#    cada una, qué formato JSON debe devolver siempre, y qué hacer si
+#    la pregunta no tiene que ver con música.
+#    Un ejemplo concreto: la pregunta "¿a qué horas escucho más entre
+#    semana?" funciona porque en el prompt describo la columna es_finde
+#    (True si es sábado o domingo) y la columna hora (0-23). El LLM
+#    las combina solo. Sin esa descripción, no sabría que existen y el
+#    código generado fallaría.
+#    Si quitase la instrucción del formato JSON, el LLM devolvería texto
+#    libre y exec() no encontraría ninguna variable fig que ejecutar.
 #
 #
 # 3. EL FLUJO COMPLETO
-#    Describe paso a paso qué ocurre desde que el usuario escribe
-#    una pregunta hasta que ve el gráfico en pantalla.
 #
-#    [Tu respuesta aquí]
+#    El usuario escribe una pregunta. La app construye el system prompt
+#    inyectando información real del dataset (fechas, plataformas...).
+#    Se hace una llamada a la API de OpenAI con ese prompt y la pregunta.
+#    El LLM devuelve un JSON con tres campos: tipo, codigo e
+#    interpretacion. parse_response() lo convierte en diccionario Python.
+#    Si tipo es "grafico", execute_chart() ejecuta el código con exec()
+#    y recupera la figura. Streamlit la renderiza y muestra la
+#    interpretación debajo. Si tipo es "fuera_de_alcance", se muestra
+#    solo el texto explicando por qué no puede responder.
